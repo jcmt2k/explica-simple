@@ -1,0 +1,4 @@
+PySide6
+google-genai
+markdown2
+Pillow
