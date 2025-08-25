@@ -95,11 +95,11 @@ class MainWindow(QMainWindow):
         slide_layout = QGridLayout(slide_frame)
         slide_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Contenedor principal con posicionamiento relativo
+        # Contenedor principal con layout vertical
         container = QWidget()
-        container_layout = QGridLayout(container)
+        container_layout = QVBoxLayout(container)  # Cambiado a QVBoxLayout
         container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(0)
+        container_layout.setSpacing(1)  # Espacio entre imagen y texto
 
         # Configuración de la imagen
         image_label = ResizablePixmapLabel()
@@ -112,8 +112,7 @@ class MainWindow(QMainWindow):
                 pixmap.loadFromData(image_bytes)
                 if not pixmap.isNull():
                     image_label.setPixmap(pixmap)
-                    # Ajustar el ancho al 100% del contenedor y mantener una altura fija
-                    image_label.setMinimumWidth(self.width() - 40)  # 40 píxeles para márgenes
+                    image_label.setMinimumWidth(self.width() - 40)
                     image_label.setMaximumWidth(self.width() - 40)
                     image_label.setMinimumHeight(400)
             except Exception as e:
@@ -127,21 +126,18 @@ class MainWindow(QMainWindow):
         caption_label.setMinimumWidth(self.width() - 40)
         caption_label.setMaximumWidth(self.width() - 40)
         
-        # Agregar los widgets al layout en capas
-        container_layout.addWidget(image_label, 0, 0)
-        container_layout.addWidget(caption_label, 0, 0, Qt.AlignmentFlag.AlignBottom)
+        # Agregar los widgets al layout verticalmente
+        container_layout.addWidget(image_label)
+        container_layout.addWidget(caption_label)
 
         # Estilo actualizado para el contenedor y el texto
-        font_size = (self.width() - 40) // 30  # Un décimo del ancho de la imagen
+        font_size = (self.width() - 40) // 30
         container.setStyleSheet(f"""
-            QWidget {{
-                position: relative;
-            }}
             QLabel#caption {{
-                background-color: rgba(0, 0, 0, 0.2);
+                background-color: #f5f5f5;
                 color: #0f0f0f;
                 padding: 15px;
-                margin: 0px;
+                border-radius: 5px;
                 font-size: {font_size}px;
                 font-weight: bold;
             }}
@@ -217,14 +213,11 @@ class MainWindow(QMainWindow):
                 container = slide_frame.layout().itemAt(0).widget()
                 if container:
                     container.setStyleSheet(f"""
-                        QWidget {{
-                            position: relative;
-                        }}
                         QLabel#caption {{
-                            background-color: rgba(0, 0, 0, 0.2);
+                            background-color: #f5f5f5;
                             color: #0f0f0f;
                             padding: 15px;
-                            margin: 0px;
+                            border-radius: 5px;
                             font-size: {font_size}px;
                             font-weight: bold;
                         }}
