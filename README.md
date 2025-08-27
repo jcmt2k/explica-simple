@@ -58,6 +58,13 @@ La aplicación toma una pregunta del usuario y utiliza la API de Google Gemini p
     python3 main.py
     ```
 
+## Ejemplo de uso
+
+Estos son dos ejemplo de uso del programa.
+
+- [Soy programador y tengo una compañera que me gusta, ¿cómo se lo digo?](como_se_lo_digo.md)
+- [¿Cómo funciona un acelerador de partículas?](acelerador_de_particulas.md)
+
 ## Caso de Estudio para Desarrolladores
 
 Este repositorio es una excelente oportunidad para aprender sobre los siguientes conceptos:
