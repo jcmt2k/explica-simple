@@ -84,10 +84,9 @@ El proyecto sigue una arquitectura cliente-servidor desacoplada, donde la aplica
 
 ## Ejemplo de uso
 
-Estos son dos ejemplo de uso del programa.
+https://github.com/user-attachments/assets/ed4c3a21-6856-4339-a2b8-bdffa68e51ca
 
-- [¿Cómo traigo a la vida al mamut lanudo?](mamut_lanudo.md)
-- [¿Cómo funciona un acelerador de partículas?](acelerador_de_particulas.md)
+https://github.com/user-attachments/assets/0f6ca8db-9854-4ce3-bf92-effb5130d7f7
 
 ## Caso de Estudio para Desarrolladores
 
