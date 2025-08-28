@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Explica Simple")
-        self.setGeometry(100, 100, 800, 900)
+        self.setGeometry(100, 100, 800, 800)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -91,6 +91,10 @@ class MainWindow(QMainWindow):
     def _add_slide(self, image_data, caption_text):
         if not image_data and not caption_text:
             return
+
+        # If the loading indicator is present, remove it.
+        if self.stacked_widget.count() == 1 and self.stacked_widget.widget(0).objectName() == "loading_label":
+            self._clear_slides()
 
         slide_frame = QFrame()
         slide_frame.setFrameShape(QFrame.Shape.StyledPanel)
@@ -158,9 +162,15 @@ class MainWindow(QMainWindow):
     def _update_nav_buttons(self):
         count = self.stacked_widget.count()
         current_index = self.stacked_widget.currentIndex()
-        self.slide_counter_label.setText(f"{current_index + 1} / {count}")
-        self.prev_button.setEnabled(current_index > 0)
-        self.next_button.setEnabled(current_index < count - 1)
+        
+        if count == 0 or (count == 1 and self.stacked_widget.widget(0).objectName() == "loading_label"):
+            self.slide_counter_label.setText("0 / 0")
+            self.prev_button.setEnabled(False)
+            self.next_button.setEnabled(False)
+        else:
+            self.slide_counter_label.setText(f"{current_index + 1} / {count}")
+            self.prev_button.setEnabled(current_index > 0)
+            self.next_button.setEnabled(current_index < count - 1)
 
     def generate_explanation(self):
         user_prompt = self.input_text.toPlainText().strip()
@@ -171,17 +181,22 @@ class MainWindow(QMainWindow):
         self.generate_button.setEnabled(False)
         self.clear_button.setEnabled(False)
         self._clear_slides()
+        
+        # Add loading indicator
+        loading_label = QLabel("Generando explicación y diapositivas...")
+        loading_label.setObjectName("loading_label")
+        loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.stacked_widget.addWidget(loading_label)
+        self._update_nav_buttons()
         QApplication.processEvents()
         
         try:
             self.gemini_client.start_new_chat()
-            stream_generator = self.gemini_client.generate_story_in_chat(user_prompt)
+            all_parts = self.gemini_client.generate_story_in_chat(user_prompt)
             
-            current_image = None
             current_text = ""
-
-            for part in stream_generator:
-                QApplication.processEvents()
+            # Using the user's stable logic for pairing
+            for part in all_parts:
                 if part.get("error"):
                     self.show_error_and_disable(part["error"])
                     return
@@ -190,12 +205,11 @@ class MainWindow(QMainWindow):
                     current_text += part["text"]
             
                 if part.get("inline_data"):
-                    self._add_slide(current_image, current_text)
-                    current_image = part["inline_data"]
+                    self._add_slide(part.get("inline_data"), current_text)
                     current_text = ""
             
-            if current_image or current_text:
-                self._add_slide(current_image, current_text)
+            if current_text:
+                self._add_slide(None, current_text)
 
         except Exception as e:
             self.show_error_and_disable(f"Error durante la generación: {e}")
@@ -221,7 +235,7 @@ class MainWindow(QMainWindow):
         
         for i in range(self.stacked_widget.count()):
             slide_frame = self.stacked_widget.widget(i)
-            if slide_frame:
+            if slide_frame and slide_frame.objectName() != "loading_label":
                 container = slide_frame.layout().itemAt(0).widget()
                 if container:
                     container.setStyleSheet(f'''
@@ -243,3 +257,4 @@ class MainWindow(QMainWindow):
                             if isinstance(widget, ResizablePixmapLabel):
                                 widget.setMinimumHeight(400)
         QApplication.processEvents()
+
