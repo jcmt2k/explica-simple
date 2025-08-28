@@ -19,7 +19,28 @@ La aplicación toma una pregunta del usuario y utiliza la API de Google Gemini p
 *   **Explicaciones Visuales:** Genera una secuencia narrativa de imágenes y texto.
 *   **Estilo de Arte Único:** Utiliza un *prompt* diseñado para obtener ilustraciones con un estilo "Manicito", inspirado en caricaturas clásicas.
 *   **Interfaz Limpia y Sencilla:** Facilita la interacción del usuario.
-*   **Streaming en Tiempo Real:** Muestra los resultados a medida que se reciben de la API, mejorando la experiencia de usuario.
+*   **Generación de Contenido Dinámico**: Utiliza el modelo multimodal de Google Gemini para generar tanto el texto explicativo como las imágenes relevantes a partir de una simple pregunta.
+*   **Interfaz de Usuario Intuitiva**: Construida con PySide6 (Qt for Python), la aplicación ofrece una experiencia de usuario limpia y sencilla.
+*   **Visualización en Tiempo Real**: Las diapositivas se muestran en la interfaz a medida que se generan, proporcionando feedback visual inmediato al usuario sin esperar a que el proceso completo termine.
+*   **Carrusel de Diapositivas Interactivo**:
+    - **Navegación Manual**: Botones para avanzar y retroceder entre las diapositivas.
+    - **Reproducción Automática**: Cada diapositiva se muestra durante 5 segundos antes de pasar automáticamente a la siguiente, permitiendo una visualización pasiva.
+    - **Contador de Diapositivas**: Indica la posición actual dentro de la presentación (e.g., "3 / 10").
+*   **Diseño Responsivo**: Los elementos de la interfaz se ajustan al tamaño de la ventana para una visualización óptima.
+
+## Arquitectura y Tecnologías
+
+El proyecto sigue una arquitectura cliente-servidor desacoplada, donde la aplicación de escritorio actúa como cliente de la API de Google Gemini.
+
+- **Frontend (Interfaz de Usuario)**:
+  - **Python 3**: Lenguaje principal de la aplicación.
+  - **PySide6**: Framework para la creación de la interfaz gráfica de usuario (GUI).
+  - **QTimer**: Utilizado para implementar la funcionalidad de reproducción automática.
+
+- **Backend (Lógica de Negocio y API)**:
+  - **Google Gemini API**: Servicio de IA para la generación de contenido multimodal (texto e imágenes).
+  - **`google-generativeai`**: Biblioteca cliente oficial de Google para interactuar con la API.
+  - **`python-dotenv`**: Para la gestión segura de claves de API a través de variables de entorno.
 
 ## Instalación y Uso
 
@@ -32,21 +53,23 @@ La aplicación toma una pregunta del usuario y utiliza la API de Google Gemini p
 
 1.  **Clona el repositorio:**
     ```bash
-    git clone https://github.com/tu-usuario/explica-simple.git
+    git clone https://github.com/jcmt2k/explica-simple.git
     cd explica-simple
     ```
 
 2.  **Crea y activa un entorno virtual:**
+    
     ```bash
     python3 -m venv venv
     source venv/bin/activate
     ```
-
+    
 3.  **Instala las dependencias:**
+    
     ```bash
     pip install -r requirements.txt
     ```
-
+    
 4.  **Configura tu API Key:**
     Crea un archivo `.env` en la raíz del proyecto y añade tu clave:
     ```
@@ -54,6 +77,7 @@ La aplicación toma una pregunta del usuario y utiliza la API de Google Gemini p
     ```
 
 5.  **Ejecuta la aplicación:**
+    
     ```bash
     python3 main.py
     ```
@@ -62,7 +86,7 @@ La aplicación toma una pregunta del usuario y utiliza la API de Google Gemini p
 
 Estos son dos ejemplo de uso del programa.
 
-- [Soy programador y tengo una compañera que me gusta, ¿cómo se lo digo?](como_se_lo_digo.md)
+- [¿Cómo traigo a la vida al mamut lanudo?](mamut_lanudo.md)
 - [¿Cómo funciona un acelerador de partículas?](acelerador_de_particulas.md)
 
 ## Caso de Estudio para Desarrolladores

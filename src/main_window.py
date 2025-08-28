@@ -1,6 +1,6 @@
 import base64
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGridLayout, QTextEdit, QPushButton, QLabel, QMessageBox, QApplication, QStackedWidget, QFrame, QHBoxLayout
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
 from gemini_client import GeminiClient
 
@@ -52,11 +52,9 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.input_text)
         main_layout.addLayout(buttons_layout)
 
-        # --- Carousel Area --- 
         self.stacked_widget = QStackedWidget()
         main_layout.addWidget(self.stacked_widget)
 
-        # --- Navigation Area --- 
         nav_layout = QHBoxLayout()
         self.prev_button = QPushButton("< Anterior")
         self.slide_counter_label = QLabel("0 / 0")
@@ -67,12 +65,15 @@ class MainWindow(QMainWindow):
         nav_layout.addStretch()
         nav_layout.addWidget(self.next_button)
         main_layout.addLayout(nav_layout)
-        # ----------------------
 
         self.generate_button.clicked.connect(self.generate_explanation)
         self.clear_button.clicked.connect(self._clear_slides)
         self.prev_button.clicked.connect(self._go_to_previous_slide)
         self.next_button.clicked.connect(self._go_to_next_slide)
+
+        self.autoplay_timer = QTimer(self)
+        self.autoplay_timer.setInterval(5000)
+        self.autoplay_timer.timeout.connect(self._autoplay_next_slide)
 
         try:
             self.gemini_client = GeminiClient()
@@ -82,6 +83,7 @@ class MainWindow(QMainWindow):
         self._update_nav_buttons()
 
     def _clear_slides(self):
+        self.autoplay_timer.stop()
         while self.stacked_widget.count() > 0:
             widget = self.stacked_widget.widget(0)
             self.stacked_widget.removeWidget(widget)
@@ -92,7 +94,6 @@ class MainWindow(QMainWindow):
         if not image_data and not caption_text:
             return
 
-        # If the loading indicator is present, remove it.
         if self.stacked_widget.count() == 1 and self.stacked_widget.widget(0).objectName() == "loading_label":
             self._clear_slides()
 
@@ -147,13 +148,24 @@ class MainWindow(QMainWindow):
         slide_layout.addWidget(container, 0, 0)
         self.stacked_widget.addWidget(slide_frame)
 
+    def _autoplay_next_slide(self):
+        current_index = self.stacked_widget.currentIndex()
+        count = self.stacked_widget.count()
+        if current_index < count - 1:
+            self.stacked_widget.setCurrentIndex(current_index + 1)
+            self._update_nav_buttons()
+        else:
+            self.autoplay_timer.stop()
+
     def _go_to_next_slide(self):
+        self.autoplay_timer.stop()
         new_index = self.stacked_widget.currentIndex() + 1
         if new_index < self.stacked_widget.count():
             self.stacked_widget.setCurrentIndex(new_index)
             self._update_nav_buttons()
 
     def _go_to_previous_slide(self):
+        self.autoplay_timer.stop()
         new_index = self.stacked_widget.currentIndex() - 1
         if new_index >= 0:
             self.stacked_widget.setCurrentIndex(new_index)
@@ -182,7 +194,6 @@ class MainWindow(QMainWindow):
         self.clear_button.setEnabled(False)
         self._clear_slides()
         
-        # Add loading indicator
         loading_label = QLabel("Generando explicación y diapositivas...")
         loading_label.setObjectName("loading_label")
         loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -192,11 +203,10 @@ class MainWindow(QMainWindow):
         
         try:
             self.gemini_client.start_new_chat()
-            all_parts = self.gemini_client.generate_story_in_chat(user_prompt)
             
+            first_slide_added = False
             current_text = ""
-            # Using the user's stable logic for pairing
-            for part in all_parts:
+            for part in self.gemini_client.generate_story_in_chat(user_prompt):
                 if part.get("error"):
                     self.show_error_and_disable(part["error"])
                     return
@@ -207,9 +217,18 @@ class MainWindow(QMainWindow):
                 if part.get("inline_data"):
                     self._add_slide(part.get("inline_data"), current_text)
                     current_text = ""
-            
+                    if not first_slide_added:
+                        self.autoplay_timer.start()
+                        first_slide_added = True
+                
+                self._update_nav_buttons()
+                QApplication.processEvents()
+
             if current_text:
                 self._add_slide(None, current_text)
+                if not first_slide_added:
+                    self.autoplay_timer.start()
+                    first_slide_added = True
 
         except Exception as e:
             self.show_error_and_disable(f"Error durante la generación: {e}")
@@ -219,6 +238,7 @@ class MainWindow(QMainWindow):
             self._update_nav_buttons()
 
     def show_error_and_disable(self, message):
+        self.autoplay_timer.stop()
         QMessageBox.critical(self, "Error", message)
         self._clear_slides()
         if hasattr(self, 'generate_button'):
