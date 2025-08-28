@@ -1,5 +1,5 @@
 import base64
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGridLayout, QTextEdit, QPushButton, QLabel, QMessageBox, QApplication, QScrollArea, QFrame, QHBoxLayout
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QGridLayout, QTextEdit, QPushButton, QLabel, QMessageBox, QApplication, QStackedWidget, QFrame, QHBoxLayout
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from gemini_client import GeminiClient
@@ -43,50 +43,52 @@ class MainWindow(QMainWindow):
         self.input_text.setPlaceholderText("Escribe aquí tu pregunta...")
         self.input_text.setFixedHeight(100)
         
-        # Crear un layout horizontal para los botones
         buttons_layout = QHBoxLayout()
-        
         self.generate_button = QPushButton("Generar Explicación")
         self.clear_button = QPushButton("Limpiar")
-        
         buttons_layout.addWidget(self.generate_button)
         buttons_layout.addWidget(self.clear_button)
         
         main_layout.addWidget(self.input_text)
         main_layout.addLayout(buttons_layout)
 
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        main_layout.addWidget(scroll_area)
+        # --- Carousel Area --- 
+        self.stacked_widget = QStackedWidget()
+        main_layout.addWidget(self.stacked_widget)
 
-        self.slides_container = QWidget()
-        self.slides_layout = QVBoxLayout(self.slides_container)
-        self.slides_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        scroll_area.setWidget(self.slides_container)
+        # --- Navigation Area --- 
+        nav_layout = QHBoxLayout()
+        self.prev_button = QPushButton("< Anterior")
+        self.slide_counter_label = QLabel("0 / 0")
+        self.next_button = QPushButton("Siguiente >")
+        nav_layout.addWidget(self.prev_button)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self.slide_counter_label)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self.next_button)
+        main_layout.addLayout(nav_layout)
+        # ----------------------
 
         self.generate_button.clicked.connect(self.generate_explanation)
-        self.clear_button.clicked.connect(self._clear_slides)  # Conectar el botón limpiar
+        self.clear_button.clicked.connect(self._clear_slides)
+        self.prev_button.clicked.connect(self._go_to_previous_slide)
+        self.next_button.clicked.connect(self._go_to_next_slide)
 
         try:
             self.gemini_client = GeminiClient()
         except ValueError as e:
             self.show_error_and_disable(str(e))
+        
+        self._update_nav_buttons()
 
     def _clear_slides(self):
-        # Bloquear el layout mientras se limpia
-        self.slides_container.setEnabled(False)
-        
-        while self.slides_layout.count():
-            child = self.slides_layout.takeAt(0)
-            if child.widget():
-                child.widget().hide()  # Ocultar antes de eliminar
-                child.widget().deleteLater()
-        
-        QApplication.processEvents()
-        self.slides_container.setEnabled(True)
+        while self.stacked_widget.count() > 0:
+            widget = self.stacked_widget.widget(0)
+            self.stacked_widget.removeWidget(widget)
+            widget.deleteLater()
+        self._update_nav_buttons()
 
     def _add_slide(self, image_data, caption_text):
-        """Creates a slide with content and adds it to the layout."""
         if not image_data and not caption_text:
             return
 
@@ -95,13 +97,11 @@ class MainWindow(QMainWindow):
         slide_layout = QGridLayout(slide_frame)
         slide_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Contenedor principal con layout vertical
         container = QWidget()
-        container_layout = QVBoxLayout(container)  # Cambiado a QVBoxLayout
+        container_layout = QVBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(1)  # Espacio entre imagen y texto
+        container_layout.setSpacing(1)
 
-        # Configuración de la imagen
         image_label = ResizablePixmapLabel()
         image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
@@ -118,7 +118,6 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 image_label.setText(f"No se pudo cargar la imagen: {e}")
 
-        # Configuración del texto
         caption_label = QLabel(caption_text)
         caption_label.setObjectName("caption")
         caption_label.setWordWrap(True)
@@ -126,13 +125,11 @@ class MainWindow(QMainWindow):
         caption_label.setMinimumWidth(self.width() - 40)
         caption_label.setMaximumWidth(self.width() - 40)
         
-        # Agregar los widgets al layout verticalmente
         container_layout.addWidget(image_label)
         container_layout.addWidget(caption_label)
 
-        # Estilo actualizado para el contenedor y el texto
         font_size = (self.width() - 40) // 30
-        container.setStyleSheet(f"""
+        container.setStyleSheet(f'''
             QLabel#caption {{
                 background-color: #f5f5f5;
                 color: #0f0f0f;
@@ -141,10 +138,29 @@ class MainWindow(QMainWindow):
                 font-size: {font_size}px;
                 font-weight: bold;
             }}
-        """)
+        ''')
 
         slide_layout.addWidget(container, 0, 0)
-        self.slides_layout.addWidget(slide_frame)
+        self.stacked_widget.addWidget(slide_frame)
+
+    def _go_to_next_slide(self):
+        new_index = self.stacked_widget.currentIndex() + 1
+        if new_index < self.stacked_widget.count():
+            self.stacked_widget.setCurrentIndex(new_index)
+            self._update_nav_buttons()
+
+    def _go_to_previous_slide(self):
+        new_index = self.stacked_widget.currentIndex() - 1
+        if new_index >= 0:
+            self.stacked_widget.setCurrentIndex(new_index)
+            self._update_nav_buttons()
+
+    def _update_nav_buttons(self):
+        count = self.stacked_widget.count()
+        current_index = self.stacked_widget.currentIndex()
+        self.slide_counter_label.setText(f"{current_index + 1} / {count}")
+        self.prev_button.setEnabled(current_index > 0)
+        self.next_button.setEnabled(current_index < count - 1)
 
     def generate_explanation(self):
         user_prompt = self.input_text.toPlainText().strip()
@@ -152,14 +168,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Entrada vacía", "Por favor, escribe una pregunta.")
             return
 
-        # Deshabilitar el botón antes de limpiar
         self.generate_button.setEnabled(False)
         self.clear_button.setEnabled(False)
-        
-        # Limpiar y forzar actualización
         self._clear_slides()
-        for _ in range(3):  # Forzar múltiples ciclos de eventos
-            QApplication.processEvents()
+        QApplication.processEvents()
         
         try:
             self.gemini_client.start_new_chat()
@@ -176,20 +188,21 @@ class MainWindow(QMainWindow):
                 
                 if part.get("text"):
                     current_text += part["text"]
-                    print("LLegó texto###", part["text"])
             
                 if part.get("inline_data"):
-                    current_image = part["inline_data"]
-                    print("LLegó imagen###")
                     self._add_slide(current_image, current_text)
+                    current_image = part["inline_data"]
                     current_text = ""
-                    
+            
+            if current_image or current_text:
+                self._add_slide(current_image, current_text)
 
         except Exception as e:
             self.show_error_and_disable(f"Error durante la generación: {e}")
         finally:
             self.generate_button.setEnabled(True)
             self.clear_button.setEnabled(True)
+            self._update_nav_buttons()
 
     def show_error_and_disable(self, message):
         QMessageBox.critical(self, "Error", message)
@@ -204,15 +217,14 @@ class MainWindow(QMainWindow):
         self._update_slides_size()
 
     def _update_slides_size(self):
-        """Actualiza el tamaño de todos los slides cuando la ventana cambia de tamaño"""
         font_size = (self.width() - 40) // 30
         
-        for i in range(self.slides_layout.count()):
-            slide_frame = self.slides_layout.itemAt(i).widget()
+        for i in range(self.stacked_widget.count()):
+            slide_frame = self.stacked_widget.widget(i)
             if slide_frame:
                 container = slide_frame.layout().itemAt(0).widget()
                 if container:
-                    container.setStyleSheet(f"""
+                    container.setStyleSheet(f'''
                         QLabel#caption {{
                             background-color: #f5f5f5;
                             color: #0f0f0f;
@@ -221,7 +233,7 @@ class MainWindow(QMainWindow):
                             font-size: {font_size}px;
                             font-weight: bold;
                         }}
-                    """)
+                    ''')
                     
                     for j in range(container.layout().count()):
                         widget = container.layout().itemAt(j).widget()
